@@ -7,4 +7,4 @@ $tape | out-default
 
 
 $tape = (New-Vcr -Mode Playback | Invoke-VcrRestMethod -Uri 'https://jsonplaceholder.typicode.com/todos/1')
-$tape | out-default
+$tape

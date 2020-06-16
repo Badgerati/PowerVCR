@@ -78,6 +78,22 @@ function Read-VcrWebExceptionDetails
     }
 }
 
+function Read-VcrCommandExceptionDetails
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [System.Management.Automation.ErrorRecord]
+        $ErrorRecord
+    )
+
+    return [ordered]@{
+        ErrorCode = [int]$ErrorRecord.Exception.ErrorCode
+        StackTrace = [string]$ErrorRecord.ScriptStackTrace
+        Content = [string]$ErrorRecord.Exception.Message
+    }
+}
+
 function Test-VcrIsWindowsPwsh
 {
     return ($PSVersionTable.PSVersion.Major -le 5)
