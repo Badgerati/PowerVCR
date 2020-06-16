@@ -20,22 +20,34 @@ function Read-VcrWebExceptionDetails
         $ErrorRecord
     )
 
-    # this assumes HttpRequestException
     $body = $_.ErrorDetails.Message
 
-    if ($body -ieq 'No such host is known') {
+    if ($body -imatch '(No such host is known|The remote name could not be resolved)') {
         $code = 404
         $desc = 'Not Found'
         $headers = $null
     }
     else {
-        $code = [int]$_.Exception.Response.StatusCode
-        $desc = [string]$_.Exception.Response.ReasonPhrase
-        $headers = ($_.Exception.Response.Headers.ToString() + $_.Exception.Response.Content.Headers.ToString())
+        switch ($ErrorRecord) {
+            { $_.Exception -is [System.Net.WebException] } {
+                $stream = $_.Exception.Response.GetResponseStream()
+                $stream.Position = 0
+
+                $body = [System.IO.StreamReader]::new($stream).ReadToEnd()
+                $code = [int]$_.Exception.Response.StatusCode
+                $desc = [string]$_.Exception.Response.StatusDescription
+                $headers = $_.Exception.Response.Headers.ToString()
+            }
+
+            { $_.Exception -is [System.Net.Http.HttpRequestException] } {
+                $code = [int]$_.Exception.Response.StatusCode
+                $desc = [string]$_.Exception.Response.ReasonPhrase
+                $headers = ($_.Exception.Response.Headers.ToString() + $_.Exception.Response.Content.Headers.ToString())
+            }
+        }
     }
 
     # if headers, parse them as hashtable
-
     $c_headers = $null
     if ($null -ne $headers) {
         $c_headers = [ordered]@{}
@@ -59,4 +71,21 @@ function Read-VcrWebExceptionDetails
         Content = $body
         Headers = $c_headers
     }
+}
+
+function ConvertFrom-VcrJson
+{
+    param(
+        [Parameter(Mandatory=$true, Position=0, ValueFromPipeline=$true)]
+        [string]
+        $InputObject
+    )
+
+    # PS6+
+    if ($PSVersionTable.PSVersion.Major -ge 6) {
+        return ($InputObject | ConvertFrom-Json -AsHashtable)
+    }
+
+    # PS5
+    return ($InputObject | ConvertFrom-Json)
 }

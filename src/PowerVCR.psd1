@@ -26,7 +26,7 @@
     Description = 'PowerVCR is a Cross-Platform PowerShell web request recorder and playback module.'
 
     # Minimum version of the Windows PowerShell engine required by this module
-    PowerShellVersion = '6.0'
+    PowerShellVersion = '5.0'
 
     # Assemblies that must be loaded prior to importing this module
     RequiredAssemblies = @(

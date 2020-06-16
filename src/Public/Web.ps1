@@ -42,7 +42,7 @@ function Invoke-VcrWebRequest
     if (@('playback', 'cache') -icontains $Vcr.Mode) {
         $tape = $null
         if (Test-Path $filepath) {
-            $tape = (Get-Content $filepath -Raw -Force) | ConvertFrom-Json -AsHashtable
+            $tape = (Get-Content $filepath -Raw -Force) | ConvertFrom-VcrJson
         }
     }
 
