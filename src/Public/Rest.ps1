@@ -1,4 +1,4 @@
-function Invoke-VcrRestRequest
+function Invoke-VcrRestMethod
 {
     [CmdletBinding()]
     [OutputType([hashtable])]
@@ -25,7 +25,11 @@ function Invoke-VcrRestRequest
 
         [Parameter()]
         [string]
-        $ContentType
+        $ContentType,
+
+        [Parameter()]
+        [int]
+        $TimeoutSec = 30
     )
 
     # make request hash
@@ -58,18 +62,48 @@ function Invoke-VcrRestRequest
 
     # if we get here, we're either recording (or cache-recording) - run the request and save it
     try {
-        $result = Invoke-RestMethod -Uri $Uri -Method $Method -Headers $Headers -Body $Body -ContentType $ContentType -ErrorAction Stop
+        $success = $true
+        $params = @{
+            Uri = $Uri
+            Method = $Method
+            Body = $Body
+            Headers = $Headers
+            ContentType = $ContentType
+            TimeoutSec = $TimeoutSec
+            ErrorAction = 'Stop'
+        }
+
+        if (Test-VcrIsWindowsPwsh) {
+            $params['UseBasicParsing'] = $true
+        }
+        else {
+            $VcrResponseHeaders = $null
+            $params['ResponseHeadersVariable'] = 'VcrResponseHeaders'
+        }
+
+        $result = Invoke-RestMethod @params
     }
     catch {
+        $success = $false
         $result = Read-VcrWebExceptionDetails -ErrorRecord $_
     }
 
     # convert to the result to what we can save/jsonify
-    $tape = [ordered]@{
-        StatusCode = [int]$result.StatusCode
-        StatusDescription = [string]$result.StatusDescription
-        Content = [string]$result.Content
-        Headers = [hashtable]$result.Headers
+    if ($success) {
+        $tape = [ordered]@{
+            StatusCode = 200
+            StatusDescription = 'OK'
+            Content = $result
+            Headers = [hashtable]$VcrResponseHeaders
+        }
+    }
+    else {
+        $tape = [ordered]@{
+            StatusCode = [int]$result.StatusCode
+            StatusDescription = [string]$result.StatusDescription
+            Content = [string]$result.Content
+            Headers = [hashtable]$result.Headers
+        }
     }
 
     # save the converted tape

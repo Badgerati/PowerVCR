@@ -25,7 +25,11 @@ function Invoke-VcrWebRequest
 
         [Parameter()]
         [string]
-        $ContentType
+        $ContentType,
+
+        [Parameter()]
+        [int]
+        $TimeoutSec = 30
     )
 
     # make request hash
@@ -58,7 +62,21 @@ function Invoke-VcrWebRequest
 
     # if we get here, we're either recording (or cache-recording) - run the request and save it
     try {
-        $result = Invoke-WebRequest -Uri $Uri -Method $Method -Headers $Headers -Body $Body -ContentType $ContentType -ErrorAction Stop
+        $params = @{
+            Uri = $Uri
+            Method = $Method
+            Body = $Body
+            Headers = $Headers
+            ContentType = $ContentType
+            TimeoutSec = $TimeoutSec
+            ErrorAction = 'Stop'
+        }
+
+        if (Test-VcrIsWindowsPwsh) {
+            $params['UseBasicParsing'] = $true
+        }
+
+        $result = Invoke-WebRequest @params
     }
     catch {
         $result = Read-VcrWebExceptionDetails -ErrorRecord $_

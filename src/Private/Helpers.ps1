@@ -20,11 +20,16 @@ function Read-VcrWebExceptionDetails
         $ErrorRecord
     )
 
-    $body = $_.ErrorDetails.Message
+    $body = $ErrorRecord.Exception.Message
 
     if ($body -imatch '(No such host is known|The remote name could not be resolved)') {
         $code = 404
         $desc = 'Not Found'
+        $headers = $null
+    }
+    elseif ($body -imatch '(The operation was canceled|The operation has timed out)') {
+        $code = 500
+        $desc = 'Timeout'
         $headers = $null
     }
     else {
@@ -73,6 +78,11 @@ function Read-VcrWebExceptionDetails
     }
 }
 
+function Test-VcrIsWindowsPwsh
+{
+    return ($PSVersionTable.PSVersion.Major -le 5)
+}
+
 function ConvertFrom-VcrJson
 {
     param(
@@ -81,11 +91,35 @@ function ConvertFrom-VcrJson
         $InputObject
     )
 
-    # PS6+
-    if ($PSVersionTable.PSVersion.Major -ge 6) {
-        return ($InputObject | ConvertFrom-Json -AsHashtable)
+    # PS5
+    if (Test-VcrIsWindowsPwsh) {
+        return ($InputObject | ConvertFrom-Json | ConvertTo-VcrHashtable)
     }
 
-    # PS5
-    return ($InputObject | ConvertFrom-Json)
+    # PS6+
+    return ($InputObject | ConvertFrom-Json -AsHashtable)
+}
+
+function ConvertTo-VcrHashtable
+{
+    param(
+        [Parameter(ValueFromPipeline=$true)]
+        [psobject[]]
+        $Value
+    )
+
+    if (($null -eq $Value) -or ($Value.Length -eq 0)) {
+        return @{}
+    }
+
+    return @(@($Value) | ForEach-Object {
+        $obj = $_
+        $output = @{}
+
+        $obj | Get-Member -MemberType *Property | Foreach-Object {
+            $output[$_.Name] = $obj.($_.Name)
+        }
+
+        $output
+    })
 }
